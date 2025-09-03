@@ -121,7 +121,55 @@ async function run() {
        const result= await menu.toArray();
        res.send(result)
     })
-    app.get('/carts',async(req,res)=>{
+
+app.get("/menu/:id", async (req, res) => {
+ 
+    const id = req.params.id;
+
+    const query = {
+      $or: [
+        { _id: ObjectId.isValid(id) ? new ObjectId(id) : null }, // if it's ObjectId
+        { _id: id } // if it's a string
+      ]
+    };
+
+    const result = await menuCollection.findOne(query);
+
+   res.send(result)
+
+});
+
+    app.delete('/menu/:id',verifyToken,verifyAdmin,async(req,res)=>{
+       const id=req.params.id;
+       const query={_id:new ObjectId(id)};
+       const result=await menuCollection.deleteOne(query);
+       res.send(result)
+    })
+    app.patch('/menu/:id',async(req,res)=>{
+      const menu=req.body;
+      const id=req.params.id;
+      const query={_id: new ObjectId(id)};
+      const updateDocument={
+        $set:{
+           name:menu.name,
+           recipe:menu.recipe,
+            image:menu.image,
+            category:menu.category.toLowerCase(),
+            price:menu.price
+
+        }
+      }
+      const result = await menuCollection.updateOne(query,updateDocument);
+      res.send(result)
+    })
+    app.post('/menu',verifyToken,verifyAdmin,async(req,res)=>{
+      const menu=req.body;
+      const result=await menuCollection.insertOne(menu);
+      res.send(result)
+    })
+  
+    // cart related api
+    app.get('/carts',verifyToken,async(req,res)=>{
       const email=req.query.email;
       const query={email:email}
       const  result=await CartCollection.find(query).toArray();
