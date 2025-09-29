@@ -158,6 +158,7 @@ async function run() {
       const result = await menuCollection.updateOne(query, updateDocument);
       res.send(result);
     });
+
     app.post("/menu", verifyToken, verifyAdmin, async (req, res) => {
       const menu = req.body;
       const result = await menuCollection.insertOne(menu);
@@ -227,6 +228,61 @@ async function run() {
       const result = await paymentsCollection.find(query).toArray();
       res.send(result);
     })
+   // admin-stats API
+app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const users = await userCollection.estimatedDocumentCount();
+    const products = await menuCollection.estimatedDocumentCount();
+    const orders = await paymentsCollection.estimatedDocumentCount();
+
+    // Total revenue from payments
+    const revenueResult = await paymentsCollection.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$price" }, // assuming "price" field exists
+        },
+      },
+    ]).toArray();
+
+    const revenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+
+    res.send({ revenue, users, products, orders });
+  } catch (err) {
+    console.error("Error fetching admin stats:", err);
+    res.status(500).send({ message: "Failed to load stats" });
+  }
+});
+
+
+
+// Get product count by category
+app.get("/menu-stats", verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const result = await menuCollection.aggregate([
+      {
+        $group: {
+          _id: "$category", // group by category
+          totalProducts: { $sum: 1 } // count items
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          category: "$_id",
+          totalProducts: 1
+        }
+      }
+    ]).toArray();
+
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching menu stats:", error);
+    res.status(500).send({ error: "Failed to fetch menu stats" });
+  }
+});
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
